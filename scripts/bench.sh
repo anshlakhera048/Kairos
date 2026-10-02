@@ -13,8 +13,13 @@ if [ ! -x "$BENCH_BIN" ]; then
 fi
 
 if command -v taskset >/dev/null 2>&1; then
-    echo "running pinned to core 2 (taskset)"
-    taskset -c 2 "$BENCH_BIN" "$@"
+    if [ -n "${KAIROS_BENCH_CPU:-}" ]; then
+        echo "running pinned to core(s) $KAIROS_BENCH_CPU (taskset)"
+        taskset -c "$KAIROS_BENCH_CPU" "$BENCH_BIN" "$@"
+    else
+        echo "KAIROS_BENCH_CPU not set; running unpinned (numbers indicative only)"
+        "$BENCH_BIN" "$@"
+    fi
 else
     echo "taskset not found; running unpinned (numbers not publishable)"
     "$BENCH_BIN" "$@"

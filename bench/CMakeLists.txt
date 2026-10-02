@@ -1,5 +1,5 @@
 add_executable(kairos_bench
-    bench_smoke.cpp
+    bench_engine.cpp
 )
 target_link_libraries(kairos_bench PRIVATE
     kairos::kairos

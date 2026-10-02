@@ -9,12 +9,18 @@ A from-scratch, low-latency **C++20** system with one deterministic core used in
 
 ## Status
 
-Early development. The build system, core types, and developer tooling are in place; the matching engine itself is under active development. See the roadmap below.
+Early development. The build system, core types, developer tooling, and the
+matching engine (Phase 1) are in place and fully tested. See the roadmap below.
 
 ## Roadmap
 
-- **Phase 1 — Order book + matching engine (weeks 1–3).** Correct, deterministic, allocation-free matching engine with measured performance and a publishable benchmark report.
-- **Phase 2 — Capture, replay, realism (weeks 4–7).** Market-data recorder, deterministic replay engine, pluggable latency and queue-position models, validation plan against real fills.
+- **Phase 1 — Order book + matching engine (done).** Price-time priority
+  matching engine: limit/market/IOC/FOK/post-only, modify semantics,
+  self-trade policies, allocation-free event output. Differential-tested
+  against a naive reference (~18M ops, adversarial distributions, ASan/UBSan
+  clean). Benchmarks: ~100 ns/add, ~15 ns/fill at scale; see
+  `docs/benchmarks/phase1.md`.
+- **Phase 2 — Capture, replay, realism (next).** Market-data recorder, deterministic replay engine, pluggable latency and queue-position models, validation plan against real fills.
 - **Phase 3 — Strategy API, market maker, research result (weeks 8–10).** Event-driven strategy API (C++ + Python bindings), Avellaneda–Stoikov reference market maker, and the "realism gap" experiment as a research note.
 - **Phase 4 — The arena (weeks 11+).** Local-first tournament harness: deterministic flow generators, fair scoring, leaderboard. Hosted submissions are an explicit later stretch goal.
 
