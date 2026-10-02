@@ -9,7 +9,7 @@ A from-scratch, low-latency **C++20** system with one deterministic core used in
 
 ## Status
 
-**Phase 0 — repository scaffolding (this commit).** Build system, core types, tooling, docs skeleton. The matching engine is intentionally not implemented yet.
+Early development. The build system, core types, and developer tooling are in place; the matching engine itself is under active development. See the roadmap below.
 
 ## Roadmap
 

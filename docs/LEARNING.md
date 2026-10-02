@@ -3,7 +3,7 @@
 Concepts behind the code, each in 2–3 lines — plain language, no hand-waving.
 If I can't explain it, I don't understand it yet.
 
-## Phase 0 — Setup
+## Setup
 - *(empty: scaffolding only)*
 
 ## Phase 1 — Order Book + Matching Engine
