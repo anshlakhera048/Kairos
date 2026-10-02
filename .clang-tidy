@@ -1,0 +1,12 @@
+# Sensible, non-noisy checks: real bugs and real performance traps.
+# Naming and modernize-nitpicks are left to code review.
+Checks: >
+  bugprone-*,
+  performance-*,
+  clang-analyzer-core.*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions
+WarningsAsErrors: true
+CheckOptions:
+  - { key: performance-move-const-arg.CheckTriviallyCopyable, value: true }
+HeaderFilterRegex: '.*'

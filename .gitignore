@@ -1,0 +1,29 @@
+# Build trees (one per CMake preset)
+build/
+
+# CMake leftovers
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+_CPack_Packages/
+
+# Compiled objects / archives
+*.o
+*.a
+*.so
+
+# clangd / tooling caches
+.cache/
+compile_commands.json
+
+# Sanitizer / profiler output
+*.profraw
+*.profdata
+
+# Benchmark result dumps
+benchmark_results/
+
+# OS noise
+.DS_Store

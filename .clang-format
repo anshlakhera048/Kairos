@@ -1,0 +1,15 @@
+# LLVM-based style, tuned for readability of dense systems code.
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+SortIncludes: CaseSensitive
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+BreakBeforeBraces: Attach
+AlwaysBreakAfterDefinitionReturnType: None
+SpaceAfterTemplateKeyword: true
