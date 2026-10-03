@@ -6,8 +6,14 @@ add_executable(kairos_tests
     unit/test_types.cpp
     unit/test_orderbook.cpp
     unit/test_histogram.cpp
+    unit/test_replay.cpp
+    unit/test_latency.cpp
+    unit/test_fill_model.cpp
+    unit/test_sim.cpp
 )
 target_include_directories(kairos_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../bench)
+target_compile_definitions(kairos_tests PRIVATE
+    TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
 
 # Differential test: engine vs naive reference over random op streams.
 add_executable(kairos_diff_test

@@ -24,10 +24,13 @@ target_include_directories(kairos INTERFACE
 )
 target_link_libraries(kairos INTERFACE kairos_warnings)
 
-# Compiled core (stubs until Phase 1 implements the engine)
+# Compiled core
 add_library(kairos_core STATIC
     src/order_book.cpp
     src/engine.cpp
+    src/data_format.cpp
+    src/l2_book.cpp
+    src/account.cpp
 )
 target_link_libraries(kairos_core PUBLIC kairos)
 

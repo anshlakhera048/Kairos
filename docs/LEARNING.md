@@ -38,7 +38,31 @@ If I can't explain it, I don't understand it yet.
 - *(to be filled as the engine is built)*
 
 ## Phase 2 — Capture, Replay, Realism
-- *(to be filled)*
+
+- The egress proxy blocks websocket upgrades, so the recorder has two
+  modes: `ws` (primary, for deployment) and `poll` (REST fallback, works
+  everywhere). Same binary format, so the replay engine doesn't care.
+  Lesson: design the capture path for the deployment environment, not the
+  dev environment — and test the sync logic against a mock server.
+- Coinbase's `level2` channel was chosen over Binance (geo-blocked from
+  here) and Kraken: snapshot + sequenced diffs with a documented sync
+  procedure, no auth for market data.
+- Binary format v1: fixed-size everything (64B header, 48B event header,
+  24B level entries), little-endian, CRC32 finalized at close. The C++
+  reader walks it with pure pointer arithmetic. A Python writer + reader
+  pair caught a struct-size miscount before any C++ was written.
+- `-Wpedantic` rejects `__int128`. The account's notional intermediates
+  moved to `src/account.cpp` with a file-scoped pragma, keeping the
+  header clean. Both supported compilers (GCC, Clang) provide `__int128`.
+- `p_ahead = 1.0` overflowed the binomial threshold (`1.0 * 2^64` isn't
+  representable in uint64_t — UB that silently returned 0). Boundary
+  special-cases (`<= 0.0`, `>= 1.0`) are exact and obvious.
+- The probabilistic queue's "feed is authoritative" clamp (unattributed
+  shrinkage must have been ahead) is optimistic — documented as a known
+  failure mode, not hidden.
+- Replay determinism is a checksum over event identity + resulting
+  best bid/ask, not just event bytes: it catches book-reconstruction
+  bugs, not just I/O corruption.
 
 ## Phase 3 — Strategy API, Market Maker, Research
 - *(to be filled)*
