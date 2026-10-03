@@ -65,7 +65,25 @@ If I can't explain it, I don't understand it yet.
   bugs, not just I/O corruption.
 
 ## Phase 3 — Strategy API, Market Maker, Research
-- *(to be filled)*
+
+- The simulator's timer rescheduling had no termination condition: after
+  the replay ended, the timer kept the delivery queue non-empty forever
+  (99% CPU hang). Fix: only reschedule while market data remains. Lesson:
+  every recurring event needs an explicit stop rule.
+- The strategy's account view must update at FILL REPORT time, not exchange
+  time — otherwise the strategy can observe fills early via ctx.account().
+  This was a real lookahead leak, caught by reasoning about delivery order,
+  not by a test. The cheat tests verify the mechanism.
+- A-S gamma must be O(1000) for tick-level inventory skew when sigma^2*T
+  is O(1e-4). This is a calibration reality (gamma absorbs lot/tick units),
+  not a model bug. Documented in the test.
+- Synthetic market generator bug: diffs didn't remove stale levels when the
+  mid moved, creating a crossed book that rejected 50% of post-only orders.
+  The simulator was correct; the test data was wrong. Always verify the
+  book isn't crossed in generated data.
+- The realism gap is real and measurable: naive fill-at-touch overstates
+  PnL by ~19% vs a realistic queue model (statistically significant via
+  block bootstrap). Latency alone barely mattered for this maker strategy.
 
 ## Phase 4 — The Arena
 - *(to be filled)*

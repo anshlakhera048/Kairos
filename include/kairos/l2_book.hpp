@@ -54,6 +54,11 @@ public:
     // The book is never crossed (best bid < best ask) for valid feeds.
     bool check_invariants() const;
 
+    // Level vectors for iteration (e.g., walking the book for taker fills).
+    // Bids descending by price, asks ascending.
+    const std::vector<L2Level>& bid_levels() const { return bids_; }
+    const std::vector<L2Level>& ask_levels() const { return asks_; }
+
 private:
     // Bids sorted descending by price (best first); asks ascending.
     std::vector<L2Level> bids_;

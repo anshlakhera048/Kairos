@@ -10,8 +10,14 @@ add_executable(kairos_tests
     unit/test_latency.cpp
     unit/test_fill_model.cpp
     unit/test_sim.cpp
+    unit/test_simulator.cpp
+    unit/test_as_model.cpp
+    unit/test_as_strategy.cpp
 )
-target_include_directories(kairos_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../bench)
+target_include_directories(kairos_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bench
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
 target_compile_definitions(kairos_tests PRIVATE
     TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
 

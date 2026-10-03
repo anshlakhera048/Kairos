@@ -21,7 +21,8 @@ matching engine (Phase 1) are in place and fully tested. See the roadmap below.
   clean). Benchmarks: ~100 ns/add, ~15 ns/fill at scale; see
   `docs/benchmarks/phase1.md`.
 - **Phase 2 — Capture, replay, realism (done).** Coinbase market-data recorder (websocket + REST fallback), mmap-able binary format v1, deterministic C++ replay engine (~1M events/sec), pluggable latency models (constant/jittered/empirical), risk-averse and probabilistic queue-position models, simulated account with fees and PnL, validation plan.
-- **Phase 3 — Strategy API, market maker, research (next).**
+- **Phase 3 — Strategy API, market maker, research (done, except Python bindings).** Event-driven strategy API with compile-time dispatch, no-lookahead simulator with cheat tests, Avellaneda-Stoikov market maker (C++) with tested sigma/kappa estimators, realism-gap experiment (naive overstates PnL by ~19% vs realistic queue). Python bindings (3B) pending pybind11 approval.
+- **Phase 4 — The arena (next).**
 - **Phase 3 — Strategy API, market maker, research result (weeks 8–10).** Event-driven strategy API (C++ + Python bindings), Avellaneda–Stoikov reference market maker, and the "realism gap" experiment as a research note.
 - **Phase 4 — The arena (weeks 11+).** Local-first tournament harness: deterministic flow generators, fair scoring, leaderboard. Hosted submissions are an explicit later stretch goal.
 

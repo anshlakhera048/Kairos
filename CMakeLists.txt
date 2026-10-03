@@ -61,3 +61,5 @@ if(KAIROS_BUILD_BENCHMARKS)
     FetchContent_MakeAvailable(googlebenchmark)
     add_subdirectory(bench)
 endif()
+
+add_subdirectory(tools)

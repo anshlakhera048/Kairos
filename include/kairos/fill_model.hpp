@@ -51,11 +51,17 @@ struct TrackedOrder {
     std::int64_t remaining = 0;   // unfilled
     std::int64_t qty_ahead = 0;   // lots ahead of me in the queue
     std::int64_t qty_behind = 0;  // lots behind me in the queue
+    // The HISTORICAL level qty at the last update. My own fills do not
+    // change the historical book, so deltas are computed against this,
+    // not against qty_ahead + remaining + qty_behind (which drifts as I
+    // get filled).
+    std::int64_t last_level_qty = 0;
 };
 
 // A fill of one of my orders, as determined by the model.
 struct SimFill {
     std::uint64_t order_id = 0;
+    SimSide side = SimSide::Bid;
     std::int64_t price_ticks = 0;
     std::int64_t qty_lots = 0;
     bool is_maker = true;  // false if my aggressive order took liquidity
@@ -77,23 +83,27 @@ struct RiskAverseQueue {
     void on_place(TrackedOrder& o, std::int64_t level_qty) noexcept {
         o.qty_ahead = level_qty > o.qty_lots ? level_qty - o.qty_lots : 0;
         o.qty_behind = 0;
+        o.last_level_qty = level_qty;
     }
 
-    void on_level_update(TrackedOrder& o, std::int64_t level_qty) noexcept {
+    void on_level_update(TrackedOrder& o, std::int64_t new_level_qty) noexcept {
         // Pessimistic: level reductions are ignored (assumed cancels behind
         // me — but I am at the back, so they cannot advance me). However,
         // the feed is authoritative: the level cannot hold more than it
-        // holds. If level_qty < qty_ahead + remaining, the queue ahead must
-        // have shrunk; clamp rather than contradict the feed.
+        // holds. If new_level_qty < qty_ahead + remaining, the queue ahead
+        // must have shrunk; clamp rather than contradict the feed.
+        // Note: new_level_qty is the HISTORICAL level; my fills do not
+        // affect it (see TrackedOrder::last_level_qty).
         const std::int64_t max_ahead =
-            level_qty > o.remaining ? level_qty - o.remaining : 0;
+            new_level_qty > o.remaining ? new_level_qty - o.remaining : 0;
         if (o.qty_ahead > max_ahead) {
             o.qty_ahead = max_ahead;
         }
         // Level growth joins behind me (I was there first).
-        o.qty_behind = level_qty > o.qty_ahead + o.remaining
-                           ? level_qty - o.qty_ahead - o.remaining
+        o.qty_behind = new_level_qty > o.qty_ahead + o.remaining
+                           ? new_level_qty - o.qty_ahead - o.remaining
                            : 0;
+        o.last_level_qty = new_level_qty;
     }
 
     // trade_qty: lots traded AT my price against my level (the taker
@@ -127,6 +137,45 @@ struct RiskAverseQueue {
 static_assert(QueueModel<RiskAverseQueue>);
 
 // ---------------------------------------------------------------------------
+// Naive: front of queue; fills immediately on any trade at my price.
+// This is the "fill at touch" baseline for realism-gap experiments —
+// deliberately optimistic, to quantify how much realism costs.
+// ---------------------------------------------------------------------------
+
+struct NaiveQueue {
+    void on_place(TrackedOrder& o, std::int64_t level_qty) noexcept {
+        o.qty_ahead = 0;
+        o.qty_behind = 0;
+        o.last_level_qty = level_qty;
+    }
+
+    void on_level_update(TrackedOrder& o,
+                         std::int64_t new_level_qty) noexcept {
+        o.last_level_qty = new_level_qty;
+    }
+
+    // Any trade at my price fills me immediately (I'm first in line).
+    std::int64_t on_trade(TrackedOrder& o,
+                          std::int64_t trade_qty) noexcept {
+        if (o.remaining <= 0 || trade_qty <= 0) {
+            return 0;
+        }
+        const std::int64_t fill =
+            trade_qty < o.remaining ? trade_qty : o.remaining;
+        o.remaining -= fill;
+        return fill;
+    }
+
+    std::int64_t on_trade_through(TrackedOrder& o) noexcept {
+        const std::int64_t fill = o.remaining;
+        o.remaining = 0;
+        return fill;
+    }
+};
+
+static_assert(QueueModel<NaiveQueue>);
+
+// ---------------------------------------------------------------------------
 // Probabilistic: level reductions split ahead/behind by Binomial(D, p).
 // ---------------------------------------------------------------------------
 
@@ -143,12 +192,13 @@ public:
         // probabilistic part governs how the queue EVOLVES.
         o.qty_ahead = level_qty > o.qty_lots ? level_qty - o.qty_lots : 0;
         o.qty_behind = 0;
+        o.last_level_qty = level_qty;
     }
 
-    void on_level_update(TrackedOrder& o, std::int64_t level_qty) noexcept {
-        const std::int64_t old_total =
-            o.qty_ahead + o.remaining + o.qty_behind;
-        const std::int64_t delta = level_qty - old_total;
+    void on_level_update(TrackedOrder& o, std::int64_t new_level_qty) noexcept {
+        // Delta in the HISTORICAL level (my fills don't move it).
+        const std::int64_t delta = new_level_qty - o.last_level_qty;
+        o.last_level_qty = new_level_qty;
         if (delta < 0) {
             std::int64_t d = -delta;
             std::int64_t ahead_cancel = binomial(d);
