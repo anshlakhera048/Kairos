@@ -84,6 +84,13 @@ If I can't explain it, I don't understand it yet.
 - The realism gap is real and measurable: naive fill-at-touch overstates
   PnL by ~19% vs a realistic queue model (statistically significant via
   block bootstrap). Latency alone barely mattered for this maker strategy.
+- Python bindings: pybind11's `PyContext` collides with Python.h's
+  `PyContext` typedef — renamed to `KairosPyContext`. The Python A-S
+  initially used symmetric spreads; the C++ uses inventory-asymmetric
+  distances (the correct A-S). Fixed Python to match bit-exactly.
+- Measured Python overhead honestly: 11.6x slower than C++ (2.7x binding
+  + 4.3x strategy logic). Documented in docs/python-overhead.md — the
+  spec asked for honesty, and the numbers justify the two-path design.
 
 ## Phase 4 — The Arena
 - *(to be filled)*

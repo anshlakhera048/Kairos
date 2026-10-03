@@ -36,6 +36,7 @@ target_link_libraries(kairos_core PUBLIC kairos)
 
 option(KAIROS_BUILD_TESTS "Build unit/differential/randomized tests" ON)
 option(KAIROS_BUILD_BENCHMARKS "Build benchmarks (never run in CI)" OFF)
+option(KAIROS_BUILD_PYTHON "Build Python bindings (pybind11)" ON)
 
 include(FetchContent)
 
@@ -63,3 +64,12 @@ if(KAIROS_BUILD_BENCHMARKS)
 endif()
 
 add_subdirectory(tools)
+
+if(KAIROS_BUILD_PYTHON)
+    FetchContent_Declare(pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11.git
+        GIT_TAG v2.13.6
+    )
+    FetchContent_MakeAvailable(pybind11)
+    add_subdirectory(python)
+endif()
