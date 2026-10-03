@@ -117,6 +117,23 @@ public:
     bool best_ask(Price& out) const noexcept;
     std::size_t resting_count() const noexcept { return live_count_; }
 
+    // Snapshot the top levels for the arena's delayed view. Writes up to
+    // max_levels bids (descending price) then up to max_levels asks
+    // (ascending price) into out. Returns the total written. Each entry
+    // is (price_ticks, qty_lots, is_bid).
+    struct LevelInfo {
+        std::int64_t price_ticks = 0;
+        std::int64_t qty_lots = 0;
+        bool is_bid = false;
+    };
+    std::size_t snapshot_levels(LevelInfo* out, std::size_t max_levels,
+                                std::size_t per_side) const noexcept;
+
+    // Query a resting order by ID. Returns false if not found (filled,
+    // cancelled, or never existed). Read-only; for the arena harness to
+    // detect fills on participant orders.
+    bool get_order(OrderId id, Order& out) const noexcept;
+
     // Test/diagnostic only: O(n) full invariant scan (no crossed book, level
     // aggregates match, id map <-> pool consistent, free list integrity,
     // bitmap matches non-empty levels).

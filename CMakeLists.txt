@@ -31,6 +31,7 @@ add_library(kairos_core STATIC
     src/data_format.cpp
     src/l2_book.cpp
     src/account.cpp
+    src/flow.cpp
 )
 target_link_libraries(kairos_core PUBLIC kairos)
 

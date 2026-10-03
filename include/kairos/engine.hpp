@@ -11,6 +11,7 @@ namespace kairos {
 class Engine {
 public:
     Engine() = default;
+    explicit Engine(OrderBookConfig cfg) : book_(cfg) {}
 
     Engine(const Engine&) = delete;
     Engine& operator=(const Engine&) = delete;

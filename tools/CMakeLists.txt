@@ -8,3 +8,14 @@ target_link_libraries(kairos_realism_gap PRIVATE
 target_include_directories(kairos_realism_gap PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
+
+add_executable(kairos_tournament
+    arena/run_tournament.cpp
+)
+target_link_libraries(kairos_tournament PRIVATE
+    kairos::kairos
+    kairos_core
+)
+target_include_directories(kairos_tournament PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)

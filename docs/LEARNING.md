@@ -93,4 +93,16 @@ If I can't explain it, I don't understand it yet.
   spec asked for honesty, and the numbers justify the two-path design.
 
 ## Phase 4 — The Arena
-- *(to be filled)*
+
+- Live engine (not pre-generated flow) is the right call: the bot's
+  orders rest in the book and get hit — market impact matters.
+- Fill detection via `OrderBook::get_order()` polling (new read-only API).
+  The engine's events are taker-centric; they don't identify makers.
+- The seed orders must be tiny, or they absorb all flow via time priority
+  and the bot never gets filled. Learned the hard way.
+- Bots that requote on every book update never rest long enough to get
+  hit. The FixedSpreadBot now only requotes when prices actually change.
+- The cheater test verifies anti-cheat: 40 orders rejected by position
+  limit, 0 fills. The limit works.
+- OrderBook needed a configurable price band (was hardcoded to [-1024,
+  1024]). Added `OrderBookConfig` to `Engine`.

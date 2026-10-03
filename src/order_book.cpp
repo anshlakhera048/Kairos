@@ -215,6 +215,69 @@ bool OrderBook::best_ask(Price& out) const noexcept {
     return true;
 }
 
+bool OrderBook::get_order(OrderId id, Order& out) const noexcept {
+    const std::uint32_t idx = id_find(id);
+    if (idx == kInvalidIndex) {
+        return false;
+    }
+    out = pool_[idx];
+    return true;
+}
+
+std::size_t OrderBook::snapshot_levels(LevelInfo* out, std::size_t max_levels,
+                                       std::size_t per_side) const noexcept {
+    std::size_t n = 0;
+    // Bids: descending price (highest first).
+    if (bid_bits1_ != 0) {
+        std::uint64_t bits1 = bid_bits1_;
+        std::size_t count = 0;
+        while (bits1 != 0 && count < per_side && n < max_levels) {
+            const unsigned w = 63 - std::countl_zero(bits1);
+            std::uint64_t word = bid_bits0_[w];
+            while (word != 0 && count < per_side && n < max_levels) {
+                const unsigned b = 63 - std::countl_zero(word);
+                const std::uint32_t lvl_idx = (w << 6) + b;
+                const Level& lvl = levels_[lvl_idx];
+                if (lvl.bids.total.lots > 0) {
+                    out[n].price_ticks =
+                        band_lo_ + static_cast<std::int64_t>(lvl_idx);
+                    out[n].qty_lots = lvl.bids.total.lots;
+                    out[n].is_bid = true;
+                    ++n;
+                    ++count;
+                }
+                word &= word - 1;  // clear lowest set bit
+            }
+            bits1 &= bits1 - 1;
+        }
+    }
+    // Asks: ascending price (lowest first).
+    if (ask_bits1_ != 0) {
+        std::uint64_t bits1 = ask_bits1_;
+        std::size_t count = 0;
+        while (bits1 != 0 && count < per_side && n < max_levels) {
+            const unsigned w = static_cast<unsigned>(std::countr_zero(bits1));
+            std::uint64_t word = ask_bits0_[w];
+            while (word != 0 && count < per_side && n < max_levels) {
+                const unsigned b = static_cast<unsigned>(std::countr_zero(word));
+                const std::uint32_t lvl_idx = (w << 6) + b;
+                const Level& lvl = levels_[lvl_idx];
+                if (lvl.asks.total.lots > 0) {
+                    out[n].price_ticks =
+                        band_lo_ + static_cast<std::int64_t>(lvl_idx);
+                    out[n].qty_lots = lvl.asks.total.lots;
+                    out[n].is_bid = false;
+                    ++n;
+                    ++count;
+                }
+                word &= word - 1;
+            }
+            bits1 &= bits1 - 1;
+        }
+    }
+    return n;
+}
+
 // Read-only pre-scan: quantity a taker could fill at or through `limit`.
 // Used for the FOK all-or-nothing check. Respects the self-trade policy:
 // under CancelResting own orders contribute 0 (they would be cancelled);

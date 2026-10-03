@@ -22,7 +22,8 @@ matching engine (Phase 1) are in place and fully tested. See the roadmap below.
   `docs/benchmarks/phase1.md`.
 - **Phase 2 — Capture, replay, realism (done).** Coinbase market-data recorder (websocket + REST fallback), mmap-able binary format v1, deterministic C++ replay engine (~1M events/sec), pluggable latency models (constant/jittered/empirical), risk-averse and probabilistic queue-position models, simulated account with fees and PnL, validation plan.
 - **Phase 3 — Strategy API, market maker, research (done).** Event-driven strategy API with compile-time dispatch, no-lookahead simulator with cheat tests, Avellaneda-Stoikov market maker (C++ and Python, bit-identical quotes) with tested sigma/kappa estimators, Python bindings via pybind11 (11.6x slower than C++, honestly documented), realism-gap experiment (naive overstates PnL by ~19% vs realistic queue). Python bindings: `PYTHONPATH=python python3 python/test_bindings.py`.
-- **Phase 4 — The arena (next).**
+- **Phase 4 — The arena (done).** Live tournament harness: flow generators (noise, informed, background makers) and participant bots act on one shared matching engine in logical time. 5 example bots (A-S, fixed-spread, momentum, random, cheater). Scoring with inventory penalty and risk adjustment. Anti-cheat enforced (position/rate limits, time budget). Static HTML leaderboard. Run: `kairos_tournament --bots as,fixed --seeds 50 --out results.json`.
+- **Phase 5 — (next).**
 - **Phase 3 — Strategy API, market maker, research result (weeks 8–10).** Event-driven strategy API (C++ + Python bindings), Avellaneda–Stoikov reference market maker, and the "realism gap" experiment as a research note.
 - **Phase 4 — The arena (weeks 11+).** Local-first tournament harness: deterministic flow generators, fair scoring, leaderboard. Hosted submissions are an explicit later stretch goal.
 

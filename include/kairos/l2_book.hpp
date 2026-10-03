@@ -48,6 +48,9 @@ public:
     // Quantity at an exact price level, or 0 if absent.
     std::int64_t level_qty(bool is_bid, std::int64_t price_ticks) const;
 
+    // Set a level (for the arena's delayed view). Qty 0 removes the level.
+    void upsert(bool is_bid, std::int64_t price, std::int64_t qty);
+
     std::size_t bid_count() const { return bids_.size(); }
     std::size_t ask_count() const { return asks_.size(); }
 
@@ -69,7 +72,6 @@ private:
                                           bool is_bid) {
         return is_bid ? bids : asks;
     }
-    void upsert(bool is_bid, std::int64_t price, std::int64_t qty);
 };
 
 }  // namespace kairos
