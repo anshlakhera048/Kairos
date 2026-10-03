@@ -106,3 +106,14 @@ If I can't explain it, I don't understand it yet.
   limit, 0 fills. The limit works.
 - OrderBook needed a configurable price band (was hardcoded to [-1024,
   1024]). Added `OrderBookConfig` to `Engine`.
+
+## Code Review Fixes (2026-10-03)
+
+- `snapshot_levels` had a critical bit-manipulation bug: the bids loop
+  cleared the lowest bit instead of the processed bit, returning duplicate
+  levels. Fixed both inner and outer loops.
+- `bot_modify` hardcoded Bid side; now tracks side via `active_orders_`.
+- `on_cancel` callbacks were never delivered; added delayed queue.
+- InformedTrader used magic 1e4 multiplier; config now in explicit ticks.
+- NoiseTrader could generate zero-qty orders; added validation.
+- Cheater rejections weren't counted; added `limit_rejects_`.

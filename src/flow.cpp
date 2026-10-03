@@ -45,10 +45,16 @@ std::uint64_t NoiseTrader::act(Engine& engine, std::uint64_t now, Event* /*out*/
     if (mid > 0) {
         const bool is_market = rng_.next_unit() < cfg_.p_market;
         const Side side = rng_.next_unit() < 0.5 ? Side::Bid : Side::Ask;
-        // Lognormal size.
+        // Lognormal size (clamped to positive).
         const double size = cfg_.mean_size_lots *
                             std::exp(cfg_.size_sigma * rng_.next_gauss());
         const std::int64_t qty = static_cast<std::int64_t>(size);
+        if (qty <= 0) {
+            // Skip invalid sizes; schedule next arrival.
+            const double dt = rng_.next_exp(cfg_.arrival_rate_per_s);
+            next_time_ = now + static_cast<std::uint64_t>(dt * 1e9);
+            return next_time_;
+        }
         const std::uint64_t id = (static_cast<std::uint64_t>(owner_) << 32) |
                                  (order_seq_++);
 
@@ -103,13 +109,13 @@ std::uint64_t InformedTrader::act(Engine& engine, std::uint64_t now,
     // Advance the latent fair value from last_time_ to now.
     if (last_time_ > 0 && now > last_time_) {
         const double dt_s = (now - last_time_) / 1e9;
-        // Brownian motion.
-        fair_ += cfg_.sigma_v_per_sqrt_s * std::sqrt(dt_s) * 1e4 *
+        // Brownian motion (in ticks).
+        fair_ += cfg_.sigma_v_ticks_per_sqrt_s * std::sqrt(dt_s) *
                  rng_.next_gauss();
         // Jumps (news).
         const double p_jump = cfg_.jump_rate_per_s * dt_s;
         if (rng_.next_unit() < p_jump) {
-            fair_ += cfg_.jump_sigma * 1e4 * rng_.next_gauss();
+            fair_ += cfg_.jump_sigma_ticks * rng_.next_gauss();
         }
     }
     last_time_ = now;

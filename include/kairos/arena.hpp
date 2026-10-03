@@ -185,6 +185,20 @@ private:
     std::vector<std::uint64_t> order_times_;  // for rate limiting
     std::uint64_t limit_rejects_ = 0;  // orders blocked by anti-cheat limits
 
+    // Active bot orders: id -> side (for modify to preserve side).
+    struct ActiveOrder {
+        std::uint64_t id;
+        SimSide side;
+    };
+    std::vector<ActiveOrder> active_orders_;
+
+    // Delayed callbacks: (delivery_time, order_id) for on_cancel.
+    struct CancelCallback {
+        std::uint64_t delivery_time;
+        std::uint64_t order_id;
+    };
+    std::vector<CancelCallback> cancel_callbacks_;
+
     // Bot order submission (called by Context).
     std::uint64_t bot_send_limit(SimSide side, std::int64_t price_ticks,
                                  std::int64_t qty_lots, bool post_only);

@@ -116,10 +116,24 @@ void Arena<Bot>::bot_cancel(std::uint64_t order_id) {
                            return po.id == order_id;
                        }),
         pending_.end());
-    // If already in the engine, submit a cancel (with latency).
-    // (Simplified: cancels take effect immediately for now.)
+    // If already in the engine, submit a cancel.
     Event evts[4];
-    engine_.book().cancel(OrderId(order_id), Timestamp(strategy_now_), evts, 4);
+    auto res = engine_.book().cancel(OrderId(order_id),
+                                     Timestamp(strategy_now_), evts, 4);
+    if (res.events > 0) {
+        // Cancel succeeded; schedule the on_cancel callback (with feed latency).
+        CancelCallback cb;
+        cb.delivery_time = strategy_now_ + cfg_.feed_latency_ns;
+        cb.order_id = order_id;
+        cancel_callbacks_.push_back(cb);
+        // Remove from active_orders_.
+        active_orders_.erase(
+            std::remove_if(active_orders_.begin(), active_orders_.end(),
+                           [order_id](const ActiveOrder& ao) {
+                               return ao.id == order_id;
+                           }),
+            active_orders_.end());
+    }
 }
 
 template <typename Bot>
@@ -127,10 +141,23 @@ std::uint64_t Arena<Bot>::bot_modify(std::uint64_t order_id,
                                      std::int64_t new_price_ticks,
                                      std::int64_t new_qty_lots) {
     // Modify = cancel + new order (loses queue position).
+    // Look up the side from active orders.
+    SimSide side = SimSide::Bid;  // default (should not happen)
+    for (const auto& ao : active_orders_) {
+        if (ao.id == order_id) {
+            side = ao.side;
+            break;
+        }
+    }
     bot_cancel(order_id);
-    // (We don't know the side; assume bid — this is a simplification.
-    //  A real implementation would track the side.)
-    return bot_send_limit(SimSide::Bid, new_price_ticks, new_qty_lots, true);
+    // Remove from active_orders_ (bot_cancel doesn't know the side).
+    active_orders_.erase(
+        std::remove_if(active_orders_.begin(), active_orders_.end(),
+                       [order_id](const ActiveOrder& ao) {
+                           return ao.id == order_id;
+                       }),
+        active_orders_.end());
+    return bot_send_limit(side, new_price_ticks, new_qty_lots, true);
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +217,8 @@ BotResult Arena<Bot>::run(Bot& bot, const std::string& bot_name) {
     pending_.clear();
     order_times_.clear();
     limit_rejects_ = 0;
+    active_orders_.clear();
+    cancel_callbacks_.clear();
     struct ViewUpdate {
         std::uint64_t delivery_time;
         std::vector<OrderBook::LevelInfo> levels;
@@ -235,6 +264,9 @@ BotResult Arena<Bot>::run(Bot& bot, const std::string& bot_name) {
         for (const auto& vu : view_queue) {
             next_t = std::min(next_t, vu.delivery_time);
         }
+        for (const auto& cb : cancel_callbacks_) {
+            next_t = std::min(next_t, cb.delivery_time);
+        }
         if (cfg_.timer_interval_ns > 0) {
             next_t = std::min(next_t, next_timer);
         }
@@ -267,6 +299,7 @@ BotResult Arena<Bot>::run(Bot& bot, const std::string& bot_name) {
                     if (evts[i].type == EventType::Ack) {
                         bot_orders.push_back(
                             {it->id, it->side == SimSide::Bid, it->qty});
+                        active_orders_.push_back({it->id, it->side});
                         ++res.acks;
                     } else if (evts[i].type == EventType::Reject) {
                         ++res.rejects;
@@ -312,16 +345,30 @@ BotResult Arena<Bot>::run(Bot& bot, const std::string& bot_name) {
                     // Update tracked qty.
                     it->qty_original = ord.remaining.lots;
                     if (ord.remaining.lots == 0) {
+                        const std::uint64_t filled_id = it->id;
                         it = bot_orders.erase(it);
+                        // Remove from active_orders_ too.
+                        active_orders_.erase(
+                            std::remove_if(active_orders_.begin(),
+                                           active_orders_.end(),
+                                           [filled_id](const ActiveOrder& ao) {
+                                               return ao.id == filled_id;
+                                           }),
+                            active_orders_.end());
                         continue;
                     }
                 }
                 ++it;
             } else {
                 // Order not found: fully filled or cancelled.
-                // (We don't distinguish here; if it was cancelled by us,
-                //  we'd have removed it. Assume filled.)
+                const std::uint64_t gone_id = it->id;
                 it = bot_orders.erase(it);
+                active_orders_.erase(
+                    std::remove_if(active_orders_.begin(), active_orders_.end(),
+                                   [gone_id](const ActiveOrder& ao) {
+                                       return ao.id == gone_id;
+                                   }),
+                    active_orders_.end());
             }
         }
         if (disqualified) break;
@@ -344,6 +391,26 @@ BotResult Arena<Bot>::run(Bot& bot, const std::string& bot_name) {
                     break;
                 }
                 it = view_queue.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        if (disqualified) break;
+
+        // 4b. Deliver cancel callbacks.
+        for (auto it = cancel_callbacks_.begin();
+             it != cancel_callbacks_.end();) {
+            if (it->delivery_time <= now) {
+                strategy_now_ = it->delivery_time;
+                auto t0 = std::chrono::steady_clock::now();
+                bot.on_cancel(ctx, it->order_id);
+                if (!detail::check_budget(t0, cfg_.callback_time_budget_ns,
+                                          res.dq_reason)) {
+                    disqualified = true;
+                    res.disqualified = true;
+                    break;
+                }
+                it = cancel_callbacks_.erase(it);
             } else {
                 ++it;
             }

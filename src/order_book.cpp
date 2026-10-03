@@ -246,9 +246,9 @@ std::size_t OrderBook::snapshot_levels(LevelInfo* out, std::size_t max_levels,
                     ++n;
                     ++count;
                 }
-                word &= word - 1;  // clear lowest set bit
+                word &= ~(1ULL << b);  // clear the bit we just processed
             }
-            bits1 &= bits1 - 1;
+            bits1 &= ~(1ULL << w);  // clear the word we just processed
         }
     }
     // Asks: ascending price (lowest first).

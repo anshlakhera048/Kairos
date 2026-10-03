@@ -126,9 +126,11 @@ private:
 // Brownian motion with volatility sigma_v.
 
 struct InformedConfig {
-    double sigma_v_per_sqrt_s = 0.0001;  // fair value volatility
+    // Fair value volatility in ticks per sqrt(second). E.g., 0.5 means the
+    // fair value moves ~0.5 ticks per sqrt(s) on average.
+    double sigma_v_ticks_per_sqrt_s = 0.5;
     double jump_rate_per_s = 0.002;      // news arrival rate
-    double jump_sigma = 0.002;          // jump size (relative)
+    double jump_sigma_ticks = 20.0;     // jump size in ticks
     double trade_threshold_ticks = 2.0;  // |v - mid| to trigger
     double trade_rate_per_s = 5.0;      // max trading rate when active
     std::int64_t trade_size_lots = 2'000'000;
@@ -244,8 +246,9 @@ inline Regime regime_calm(std::uint64_t seed) {
     r.name = "calm";
     r.noise.arrival_rate_per_s = 1.0;
     r.noise.seed = seed + 1;
-    r.informed.sigma_v_per_sqrt_s = 0.00005;
+    r.informed.sigma_v_ticks_per_sqrt_s = 0.5;
     r.informed.jump_rate_per_s = 0.0005;
+    r.informed.jump_sigma_ticks = 10.0;
     r.informed.seed = seed + 2;
     return r;
 }
@@ -257,8 +260,9 @@ inline Regime regime_volatile(std::uint64_t seed) {
     r.noise.arrival_rate_per_s = 4.0;
     r.noise.price_distance_ticks = 8.0;
     r.noise.seed = seed + 1;
-    r.informed.sigma_v_per_sqrt_s = 0.0003;
+    r.informed.sigma_v_ticks_per_sqrt_s = 1.5;
     r.informed.jump_rate_per_s = 0.005;
+    r.informed.jump_sigma_ticks = 30.0;
     r.informed.seed = seed + 2;
     return r;
 }
@@ -269,8 +273,9 @@ inline Regime regime_informed_heavy(std::uint64_t seed) {
     r.name = "informed_heavy";
     r.noise.arrival_rate_per_s = 1.5;
     r.noise.seed = seed + 1;
-    r.informed.sigma_v_per_sqrt_s = 0.0002;
+    r.informed.sigma_v_ticks_per_sqrt_s = 1.0;
     r.informed.jump_rate_per_s = 0.01;
+    r.informed.jump_sigma_ticks = 20.0;
     r.informed.trade_threshold_ticks = 1.0;
     r.informed.seed = seed + 2;
     return r;
