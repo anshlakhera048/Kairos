@@ -13,6 +13,7 @@ add_executable(kairos_tests
     unit/test_simulator.cpp
     unit/test_as_model.cpp
     unit/test_as_strategy.cpp
+    unit/test_as_requote_gating.cpp
     unit/test_arena.cpp
 )
 target_include_directories(kairos_tests PRIVATE

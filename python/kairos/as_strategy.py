@@ -32,6 +32,10 @@ class ASModel:
     def quotes(self, mid_ticks, inventory_lots, elapsed_s=0.0):
         """(bid_ticks, ask_ticks) as integers.
 
+        inventory_lots is in WHOLE lots (gamma is calibrated for whole
+        lots: O(1000) gives tick-level skew per lot). Callers holding
+        engine micro-lot positions must divide by qty_scale first.
+
         Uses the inventory-asymmetric distances from Avellaneda-Stoikov:
             d_bid = (1/g)ln(1+g/k) + g*sigma^2*T*(q+0.5)
             d_ask = (1/g)ln(1+g/k) + g*sigma^2*T*(-q+0.5)
@@ -90,12 +94,15 @@ class AvellanedaStoikov:
     def __init__(self, gamma=1500.0, sigma=0.0002, kappa=2.0,
                  horizon_s=3600.0, order_size_lots=1_000_000,
                  max_inventory_lots=10_000_000, max_spread_ticks=100,
-                 requote_on_trade=True):
+                 requote_on_trade=True, qty_scale=1_000_000):
         self.model = ASModel(gamma, sigma, kappa, horizon_s)
         self.order_size_lots = order_size_lots
         self.max_inventory_lots = max_inventory_lots
         self.max_spread_ticks = max_spread_ticks
         self.requote_on_trade = requote_on_trade
+        # Engine positions are in micro-lots; the A-S model takes inventory
+        # in whole lots (gamma is calibrated for whole lots).
+        self.qty_scale = qty_scale
         self._bid_id = None
         self._ask_id = None
 
@@ -111,7 +118,7 @@ class AvellanedaStoikov:
 
         mid = (bid_touch + ask_touch) // 2
         inv = ctx.position_lots
-        q_bid, q_ask = self.model.quotes(mid, inv)
+        q_bid, q_ask = self.model.quotes(mid, inv / self.qty_scale)
         # Clamp to the touch for backtest alignment (synthetic trades only
         # print where the historical book had liquidity).
         q_bid = min(q_bid, bid_touch)

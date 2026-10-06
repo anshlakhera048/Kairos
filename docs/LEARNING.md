@@ -76,7 +76,13 @@ If I can't explain it, I don't understand it yet.
   not by a test. The cheat tests verify the mechanism.
 - A-S gamma must be O(1000) for tick-level inventory skew when sigma^2*T
   is O(1e-4). This is a calibration reality (gamma absorbs lot/tick units),
-  not a model bug. Documented in the test.
+  not a model bug. Documented in the test. Critical corollary: the model
+  takes inventory in WHOLE lots. The engine tracks positions in micro-lots
+  (qty_scale = 1e6), so strategies must divide by qty_scale before calling
+  the model. Passing micro-lots directly makes the skew 1e6x too strong:
+  one fill threw quotes ~400k ticks from the touch and they drifted
+  ~120 ticks/sec, churning the rate limiter. Fixed 2026-10-06 in both the
+  C++ and Python A-S strategies.
 - Synthetic market generator bug: diffs didn't remove stale levels when the
   mid moved, creating a crossed book that rejected 50% of post-only orders.
   The simulator was correct; the test data was wrong. Always verify the

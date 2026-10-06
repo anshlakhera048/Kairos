@@ -50,16 +50,19 @@ struct ASQuotes {
 };
 
 // Compute optimal quotes. elapsed_s: seconds since horizon start.
-// inventory_lots: signed. Returns bid < ask (clamped to >= 1 tick spread).
+// inventory_lots: signed, in WHOLE lots (not engine micro-lots — callers
+// must convert, e.g. divide by qty_scale). gamma is calibrated for whole
+// lots: O(1000) gives tick-level skew per lot when sigma^2*T is O(1e-4).
+// Returns bid < ask (clamped to >= 1 tick spread).
 inline ASQuotes avellaneda_stoikov_quotes(const ASParams& p,
                                           std::int64_t mid_ticks,
-                                          std::int64_t inventory_lots,
+                                          double inventory_lots,
                                           double elapsed_s) {
     ASQuotes out;
     const double t_rem = p.horizon_s - elapsed_s > 0.0
                              ? p.horizon_s - elapsed_s
                              : 0.0;
-    const double q = static_cast<double>(inventory_lots);
+    const double q = inventory_lots;
     const double s = static_cast<double>(mid_ticks);
 
     // Reservation price: where I'd trade to flatten inventory now.
