@@ -1,60 +1,61 @@
-# PROJECT BRIEF: Kairos
+# AGENTS.md — Kairos engineering rules
 
-## What we are building
-A from-scratch, low-latency C++20 system with one deterministic core used in two modes:
-1. SIMULATOR: replays recorded L2 market data into an order book, injects my strategy's orders with
-   realistic order-entry latency and queue-position modelling, and produces fills I can trust.
-2. ARENA: the same matching engine driven by simulated agents (noise traders, informed traders,
-   other bots) so participants' market-making bots compete on a leaderboard.
+Read this before writing code, human or agent. These rules are enforced in
+review; they are not suggestions.
 
-Core thesis: most open-source backtesters assume fills at the price you see. We model latency and
-queue position and VALIDATE the model against real fills. Validation is the differentiator.
+## The hot path (matching engine: `include/kairos/order_book.hpp`, `src/order_book.cpp`, `src/engine.cpp`)
 
-## Why this exists (so you can judge trade-offs)
-- I am learning quantitative finance, market microstructure, and low-latency C++ by building this.
-- The goal is a public, credible project that demonstrates engineering depth and research rigor to
-  high-frequency trading firms. Every claim must therefore be measurable and reproducible.
-- I will publish write-ups at the end of each phase.
+- No heap allocation. No locks. No exceptions. No virtual calls.
+- No `std::map` / `std::unordered_map`. No iostream.
+- No floating-point prices or quantities — integer ticks and lots only.
+- Time is explicit `uint64_t` nanoseconds. No wall-clock reads.
 
-## About me
-- Strong in backend / distributed systems (Java, Kafka, Flink). Still building depth in
-  low-latency C++ and market microstructure. Explain C++ and finance concepts when you introduce them.
-- I want to UNDERSTAND every line. I will be asked about this code in interviews.
+## Determinism
 
-## Non-negotiable engineering rules
-- Language: C++20. Build: CMake (+ presets). Compilers: clang and gcc must both build clean with
-  -Wall -Wextra -Wpedantic -Werror.
-- Hot path (matching, book updates, event loop, strategy callbacks): NO heap allocation, NO locks,
-  NO exceptions, NO virtual calls, NO std::map/std::unordered_map, NO iostream, NO floating point
-  for prices or quantities. Use fixed-point integers (price in ticks, qty in lots).
-- Determinism: same input + same seed => bit-identical output. No wall-clock reads or
-  unseeded randomness inside the core. Time is an explicit input (nanosecond uint64).
-- Single-threaded core. Concurrency only at the edges (recorder, I/O), via clearly defined queues.
-- Data-oriented design: think about cache lines, memory layout, branch predictability.
-- Tests: unit tests, a differential test against a slow naive reference implementation, and
-  randomized/property tests. Sanitizers (ASan, UBSan; TSan where threads exist) must be clean.
-- Benchmarks: Google Benchmark plus custom latency histograms (HDR-style). Pinned core, warmed up,
-  report p50/p99/p99.9/max, never only averages. Avoid coordinated omission. Document methodology.
-- NEVER state a performance number you did not measure. If you cannot run it, say so and give me
-  the exact command to run.
+- Identical input + seed ⇒ identical output. Always.
+- No wall-clock reads, no unseeded randomness in the deterministic core.
+  (`std::chrono::steady_clock` appears only in anti-cheat time budgets, which
+  are explicitly documented as non-deterministic.)
 
-## How I want you to work
-1. For any non-trivial task: first propose a short plan and the key design decision(s) with
-   alternatives and trade-offs. Wait for my OK before writing large amounts of code.
-2. Implement in small, reviewable steps. Each step compiles and has tests.
-3. After each step, give a short explanation of WHY it is built this way and ask me ONE question
-   that checks my understanding of the most important idea.
-4. Push back if my design is flawed or if a requirement is ambiguous. Do not guess silently:
-   list assumptions explicitly.
-5. Ask before adding any third-party dependency. Prefer the standard library.
-6. Record important decisions as short ADRs in docs/adr/NNNN-title.md.
-7. Keep a running docs/LEARNING.md: concepts I should be able to explain, with 2-3 line summaries.
+## Correctness process
 
-## Definition of done (for every change)
-Builds clean on clang+gcc, tests pass, sanitizers clean, benchmarks run, docs updated, no TODOs left
-silently (list them).
+- Unit, differential, property, and sanitizer testing. New engine behavior
+  gets differential coverage against the naive reference where feasible.
+- `./scripts/sanitizers.sh` must be clean on every change.
+- GCC **and** Clang, strict warnings as errors — for our targets only, never
+  leak flags into FetchContent dependencies.
+- Bug fixes ship with a regression test that fails before and passes after.
 
-## Safety
-Never write code that places real orders with real money unless I explicitly request it, and then
-only with: API keys that have no withdrawal permission, a hard max order size, a hard max position,
-a kill switch, and a testnet-first run. Default is read-only market data.
+## Performance honesty
+
+- Never state an unmeasured number. Benchmarks run on pinned, isolated
+  hardware via `./scripts/bench.sh` — never in CI, never on shared runners.
+- Read `docs/benchmarks/METHODOLOGY.md` before quoting or adding a number.
+
+## Dependencies
+
+Ask before adding anything. Current set, via FetchContent only: GoogleTest,
+Google Benchmark, pybind11. Nothing else.
+
+## Docs & decisions
+
+- Significant design decisions get an ADR in `docs/adr/`.
+- Concepts worth teaching go in `docs/LEARNING.md`.
+- Keep `README.md`'s status table and roadmap honest — update them with the
+  change, not after.
+
+## Boundaries
+
+- The recorder is **read-only** market data. Nothing in this repo places real
+  orders, and no change may add real-money order placement without explicit
+  written confirmation from the maintainer, plus (at minimum): trade-only
+  keys, hard order/position limits, a kill switch, and testnet first.
+- Public-facing text (docs, commits, PRs) is professional: no prompt talk,
+  no scaffolding jargon.
+
+## Workflow
+
+- All work lands on `dev` via PR; `main` stays clean.
+- Keep PRs focused: one change, one reason. Describe *why*.
+- Never commit `build/` trees, `*.so`/`*.o`, `__pycache__`, or local data
+  captures.
