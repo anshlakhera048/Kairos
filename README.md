@@ -55,7 +55,8 @@ Validation, not features, is the differentiator.
 (GoogleTest, Google Benchmark, and pybind11 come via FetchContent).
 
 ```bash
-git clone https://github.com/anshlakhera048/Kairos.git
+# All code lives on the dev branch (main is kept clean by design)
+git clone -b dev https://github.com/anshlakhera048/Kairos.git
 cd Kairos
 
 # build (debug) + run all tests
