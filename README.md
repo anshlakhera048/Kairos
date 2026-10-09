@@ -25,8 +25,8 @@ Validation, not features, is the differentiator.
 - **Deterministic matching engine** — price-time priority; limit, market, IOC,
   FOK, post-only; modify/cancel; self-trade policies. Allocation-free event
   output, fixed-capacity structures, no locks or exceptions in the hot path.
-  Differential-tested against a naive reference (~18M adversarial ops,
-  ASan/UBSan clean).
+  Differential-tested against a naive reference (~18M adversarial ops via
+  `scripts/diff_soak.sh`, ASan/UBSan clean).
 - **Market-data capture & replay** — Coinbase L2 recorder (websocket with REST
   fallback, no API key needed), fixed-size mmap-able binary format with CRC32,
   deterministic C++ replay at ~1M events/sec.
@@ -178,7 +178,7 @@ Phases 1–4 are implemented and tested:
 
 | Phase | What | Status |
 |---|---|---|
-| 1 | Matching engine | Done — 88 tests, ASan/UBSan clean, differential-tested |
+| 1 | Matching engine | Done — 92 tests, ASan/UBSan clean, differential-tested |
 | 2 | Capture, replay, fill modelling | Done |
 | 3 | Strategy API, A-S market maker, Python bindings | Done |
 | 4 | Tournament arena + leaderboard | Done — 5 bots × 50 seeds reproducible |

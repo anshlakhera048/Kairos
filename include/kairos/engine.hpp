@@ -1,8 +1,8 @@
 #pragma once
 
 // Matching engine: owns the book, assigns deterministic sequence numbers,
-// emits events. Stub until Phase 1; the ownership structure (engine owns
-// exactly one book, single-threaded) is established here now.
+// emits events. The ownership structure: the engine owns exactly one book,
+// single-threaded; all time arrives as an explicit parameter.
 
 #include "kairos/order_book.hpp"
 
