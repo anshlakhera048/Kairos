@@ -123,3 +123,25 @@ If I can't explain it, I don't understand it yet.
 - InformedTrader used magic 1e4 multiplier; config now in explicit ticks.
 - NoiseTrader could generate zero-qty orders; added validation.
 - Cheater rejections weren't counted; added `limit_rejects_`.
+
+## A-S Bot Fix (2026-10-06)
+
+- Unit confusion is the most expensive bug class in this codebase. The
+  strategy passed engine micro-lots (1e6 per lot) to the A-S model, which
+  expects whole lots — the inventory skew came out 1e6x too strong and one
+  fill threw quotes ~400,000 ticks off-touch. The bot churned ~240
+  orders/sec straight into the rate-limit rejects (8.9M rejects, 0 fills).
+  Fix: convert to whole lots at the model boundary (`qty_scale`), in both
+  the C++ strategy and the Python mirror. Result: 66 fills, 1 reject.
+- Name units in config fields. `order_size_lots` and `max_inventory_lots`
+  hold engine micro-lots, not whole lots — the exact confusion that caused
+  the bug above. The struct comments now say so explicitly.
+- Requote gating: cancel/re-place only when desired quotes (or allowed
+  inventory sides) actually change; forget rejected/cancelled quote IDs
+  instead of tracking dead ones; back off limit-blocked sends to the
+  500ms timer cadence. Bots that requote on every book update never rest
+  long enough to get hit.
+- Lesson for the boundary: the model header (`as_model.hpp`) documents
+  "inventory in lots", the engine counts micro-lots. Every unit conversion
+  belongs in one named place (`inventory_whole_lots`), not scattered at
+  call sites.

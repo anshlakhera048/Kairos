@@ -30,7 +30,11 @@ namespace kairos {
 
 struct ASStrategyConfig {
     ASParams model;
+    // Per-quote size, in ENGINE MICRO-LOTS (not whole lots): 1'000'000
+    // micro-lots = 1 whole lot. The A-S model itself takes inventory in
+    // whole lots — see inventory_whole_lots() for the conversion.
     std::int64_t order_size_lots = 1000000;      // per quote
+    // Hard inventory limit, in ENGINE MICRO-LOTS (not whole lots).
     std::int64_t max_inventory_lots = 10000000;  // hard limit
     std::int64_t max_spread_ticks = 500;         // fast-market guard
     // Engine lots per whole lot (account positions are in engine lots;

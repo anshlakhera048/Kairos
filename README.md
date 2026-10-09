@@ -178,7 +178,7 @@ Phases 1–4 are implemented and tested:
 
 | Phase | What | Status |
 |---|---|---|
-| 1 | Matching engine | Done — 84 tests, ASan/UBSan clean, differential-tested |
+| 1 | Matching engine | Done — 88 tests, ASan/UBSan clean, differential-tested |
 | 2 | Capture, replay, fill modelling | Done |
 | 3 | Strategy API, A-S market maker, Python bindings | Done |
 | 4 | Tournament arena + leaderboard | Done — 5 bots × 50 seeds reproducible |
