@@ -229,6 +229,11 @@ Then register it in `tools/arena/run_tournament.cpp` and compete.
 `kairos arena --py-bot mybot.py:MyBot`. See `examples/debate_demo.py` and
 the quickstart above.
 
+**Claude Code users:** this repo ships a
+[skill](.claude/skills/kairos/SKILL.md) — "build and backtest a
+market-making bot on a real matching engine." Clone the repo and ask
+Claude to build you a bot.
+
 ## Project layout
 
 ```
@@ -273,6 +278,7 @@ Phases 1–4 are implemented and tested:
 | 6 | Arena Python bindings + LLM agent framework | Done — `kairos arena --py-bot`, `DebateTrader` reference agent |
 | 7 | One-command realism-gap demo | Done — `kairos realism-gap` (table + SVG chart) |
 | 8 | Public leaderboard + season 1 | Done — `kairos season run`, `kairos leaderboard`, Season 1 recorded |
+| 9 | SKILL.md for Claude Code | Done — `.claude/skills/kairos/SKILL.md`, validated end-to-end |
 
 Be aware of the following:
 
