@@ -3,8 +3,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)
 
-A from-scratch, low-latency **C++20** system for market microstructure research,
-built around one deterministic core used in two modes:
+*TradingAgents, but the market is real.*
+
+A from-scratch, low-latency **C++20** matching engine for market
+microstructure research — deterministic, integer ticks/lots, no randomness
+in the core — with one-command tournaments, honest fill modeling, and a
+public bot leaderboard. `pip install kairos-engine`, then `kairos demo`.
+
+One deterministic core, two modes:
 
 1. **Backtester** — replays recorded L2 market data into an order book, injects a
    strategy's orders with realistic entry latency and queue-position modelling,
@@ -19,6 +25,13 @@ order-entry latency and queue position — and then *measures* the gap. On
 synthetic data, naive fill-at-touch overstates market-maker PnL by ~19% versus
 a realistic queue model ([research note](docs/research/realism-gap.md)).
 Validation, not features, is the differentiator.
+
+![Kairos terminal cast — real output](docs/demo.svg)
+
+**v1.0 at a glance:** one command to a real tournament (`kairos demo`) ·
+92/92 tests green, ASan/UBSan clean · ~19% measured naive-fill PnL
+overstatement · deterministic — same seed, identical fills ·
+public bot leaderboard with Season 1 recorded.
 
 ## Features
 
@@ -279,6 +292,7 @@ Phases 1–4 are implemented and tested:
 | 7 | One-command realism-gap demo | Done — `kairos realism-gap` (table + SVG chart) |
 | 8 | Public leaderboard + season 1 | Done — `kairos season run`, `kairos leaderboard`, Season 1 recorded |
 | 9 | SKILL.md for Claude Code | Done — `.claude/skills/kairos/SKILL.md`, validated end-to-end |
+| 10 | v1.0 launch prep | Done — hook line, terminal cast, release notes, version 1.0.0 |
 
 Be aware of the following:
 

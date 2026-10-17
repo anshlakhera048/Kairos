@@ -390,7 +390,7 @@ def build_parser():
     arena.set_defaults(func=cmd_arena)
 
     rg = sub.add_parser("realism-gap",
-                        help="naive vs honest fill PnL demo (the 19% finding)")
+                        help="naive vs honest fill PnL demo")
     rg.add_argument("--seconds", type=float, default=600,
                     help="synthetic capture length in seconds (default: 600)")
     rg.add_argument("--seed", type=int, default=7,
@@ -431,6 +431,7 @@ def _demo_args(a):
         bots="as,fixed,momentum", py_bot=[], budget_s=180.0,
         seeds=10, duration=30, regime="calm",
         out=None, html=a.html, quiet=a.quiet,
+        record=None, ledger=None,
     )
 
 
