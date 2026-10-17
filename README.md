@@ -139,6 +139,16 @@ python3 tools/arena/leaderboard.py --input /tmp/results.json --out /tmp/leaderbo
 This regenerates every figure and table in [docs/research/realism-gap.md](docs/research/realism-gap.md)
 from a fixed-seed synthetic capture — the ~19% naive-PnL overstatement included.
 
+Or the one-command version (no build needed):
+
+```bash
+kairos realism-gap --chart gap.svg
+```
+
+Same strategy, same data, four fill-honesty levels (naive / +latency /
++risk-averse queue / +probabilistic queue), printed as a comparison table
+with the overstatement % and an SVG equity-curve chart.
+
 ### Python bindings
 
 ```bash
@@ -189,6 +199,10 @@ Two rules that will save you an afternoon:
 
 Then register it in `tools/arena/run_tournament.cpp` and compete.
 
+**Python bots** work too — subclass `kairos.agents.ArenaBot` and run
+`kairos arena --py-bot mybot.py:MyBot`. See `examples/debate_demo.py` and
+the quickstart above.
+
 ## Project layout
 
 ```
@@ -231,6 +245,7 @@ Phases 1–4 are implemented and tested:
 | 4 | Tournament arena + leaderboard | Done — 5 bots × 50 seeds reproducible |
 | 5 | pip packaging (`kairos-engine`) + `kairos` CLI | Done — `pip install kairos-engine && kairos demo` |
 | 6 | Arena Python bindings + LLM agent framework | Done — `kairos arena --py-bot`, `DebateTrader` reference agent |
+| 7 | One-command realism-gap demo | Done — `kairos realism-gap` (table + SVG chart) |
 
 Be aware of the following:
 

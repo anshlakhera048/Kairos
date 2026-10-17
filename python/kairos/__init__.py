@@ -16,7 +16,33 @@ Quick start:
 See docs/python.md for the overhead discussion (the honest version).
 """
 
-from .kairos_py import Context, SimConfig, run as _run
+__all__ = ["Simulator", "Context"]
+
+
+def _ext():
+    """The compiled extension, imported on first use.
+
+    Importing the kairos package — or its pure-Python submodules
+    (kairos.synth, kairos._kai_format, kairos.leaderboard) — must not
+    require the C++ extension to be built.
+    """
+    try:
+        from . import kairos_py
+    except ImportError as e:
+        raise ImportError(
+            "the Kairos C++ extension is not built; run ./scripts/build.sh "
+            "or pip install kairos-engine first") from e
+    return kairos_py
+
+
+def __getattr__(name):
+    # Lazy attribute binding for the extension's names (see _ext).
+    if name in ("Context", "SimConfig", "_run"):
+        ext = _ext()
+        return {"Context": ext.Context,
+                "SimConfig": ext.SimConfig,
+                "_run": ext.run}[name]
+    raise AttributeError(f"module 'kairos' has no attribute {name!r}")
 
 
 class Simulator:
@@ -35,7 +61,7 @@ class Simulator:
     def __init__(self, feed_latency_ns=0, order_latency_ns=0,
                  queue_model="risk_averse", p_ahead=0.5,
                  maker_fee_bp=0, taker_fee_bp=0, seed=0x9E3779B97F4A7C15):
-        cfg = SimConfig()
+        cfg = _ext().SimConfig()
         cfg.feed_latency_ns = feed_latency_ns
         cfg.order_latency_ns = order_latency_ns
         cfg.queue_model = queue_model
@@ -58,7 +84,4 @@ class Simulator:
         and 'stats' (dict of counters). All arrays are numpy; convert to
         pandas with e.g. pd.DataFrame(result['fills']).
         """
-        return _run(self._cfg, capture_path, strategy, timer_interval_ns)
-
-
-__all__ = ["Simulator", "Context"]
+        return _ext().run(self._cfg, capture_path, strategy, timer_interval_ns)

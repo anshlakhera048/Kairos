@@ -214,6 +214,48 @@ def cmd_arena(args):
             tmpdir.cleanup()
 
 
+def cmd_realism_gap(args):
+    from .realism import run_gap, render_svg
+
+    print(_c("1", "Realism gap — same strategy, same data, different fill honesty"))
+    if args.capture:
+        print(f"capture: {args.capture}")
+    else:
+        print(f"generating {args.seconds:g}s synthetic L2 capture "
+              f"(seed {args.seed}) ...", flush=True)
+    rows, meta = run_gap(
+        capture_path=args.capture, seconds=args.seconds, seed=args.seed,
+        progress=lambda lv: print(f"  {lv} ...", flush=True))
+    print(f"{_c('1', 'level'):>5}  {_c('1', 'description'):<42} "
+          f"{_c('1', 'PnL'):>9} {_c('1', 'fills'):>7} {_c('1', 'fill rate'):>9}")
+    for r in rows:
+        line = (f"{r['level']:>5}  {r['label']:<42} "
+                f"${r['pnl_dollars']:>8.2f} {r['fills']:>7} "
+                f"{100 * r['fill_rate']:>8.1f}%")
+        if r["level"] == "L1":
+            line = _c("31", line)  # naive in red
+        elif r["level"] == "L3":
+            line = _c("32", line)  # honest in green
+        print(line)
+    print()
+    print(_c("1", f"-> naive fill-at-touch overstates PnL by "
+                  f"{meta['overstatement_pct']:.1f}% "
+                  f"vs the risk-averse queue model"))
+    print(_c("2", "synthetic data: relative gap is the finding, "
+                  "absolute PnL is not tradable"))
+
+    if args.out:
+        import json as _json
+        with open(args.out, "w") as f:
+            _json.dump({"meta": meta, "rows": rows}, f, indent=2)
+        print(f"results: {args.out}")
+    if args.chart:
+        with open(args.chart, "w") as f:
+            f.write(render_svg(rows, meta))
+        print(f"chart: {args.chart}")
+    return 0
+
+
 def build_parser():
     ap = argparse.ArgumentParser(
         prog="kairos",
@@ -243,6 +285,19 @@ def build_parser():
     arena.add_argument("--html", default=None, help="write an HTML leaderboard here")
     arena.add_argument("--quiet", action="store_true", help="hide engine progress output")
     arena.set_defaults(func=cmd_arena)
+
+    rg = sub.add_parser("realism-gap",
+                        help="naive vs honest fill PnL demo (the 19% finding)")
+    rg.add_argument("--seconds", type=float, default=600,
+                    help="synthetic capture length in seconds (default: 600)")
+    rg.add_argument("--seed", type=int, default=7,
+                    help="synth capture seed (default: 7)")
+    rg.add_argument("--capture", default=None,
+                    help="use an existing .kai capture instead of generating one")
+    rg.add_argument("--out", default=None, help="write results JSON here")
+    rg.add_argument("--chart", default=None,
+                    help="write an SVG equity-curve chart here")
+    rg.set_defaults(func=cmd_realism_gap)
     return ap
 
 
