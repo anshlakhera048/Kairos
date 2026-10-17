@@ -121,6 +121,64 @@ def load_py_bot(spec):
     return attr, factory
 
 
+def _run_tournament(cxx_bots, py_specs, seeds, duration, regime,
+                    budget_s, quiet, out_path):
+    """Run the C++ and/or Python tournaments. Returns the results list."""
+    results = []
+    if cxx_bots:
+        binary = find_tournament_bin()
+        if binary is None:
+            raise RuntimeError(
+                "kairos_tournament binary not found. "
+                "If you installed from source, build first: ./scripts/build.sh "
+                "Or point $KAIROS_TOURNAMENT at the binary.")
+        print(f"running arena (C++): bots={','.join(cxx_bots)} "
+              f"seeds={seeds} duration={duration}s "
+              f"regime={regime}", flush=True)
+        cmd = [binary, "--bots", ",".join(cxx_bots),
+               "--seeds", str(seeds), "--duration", str(duration),
+               "--regime", regime, "--out", out_path]
+        if quiet:
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"kairos_tournament failed (exit {proc.returncode}):\n"
+                    f"{proc.stderr}")
+        else:
+            proc = subprocess.run(cmd)
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"kairos_tournament failed (exit {proc.returncode})")
+        with open(out_path) as f:
+            results.extend(json.load(f))
+
+    if py_specs:
+        from .arena import run_tournament as run_py_tournament
+        print(f"running arena (Python): bots="
+              f"{','.join(n for n, _ in py_specs)} seeds={seeds} "
+              f"duration={duration}s regime={regime} "
+              f"budget={budget_s}s/callback", flush=True)
+        results.extend(run_py_tournament(
+            py_specs, seeds=seeds, duration_s=duration,
+            regime=regime, callback_budget_s=budget_s,
+            quiet=quiet))
+    return results
+
+
+def _present_results(results, seeds, duration, regime, out_path,
+                     html_path=None, announced_out=None):
+    print()
+    print_table(results, seeds, duration, regime)
+    with open(out_path, "w") as f:
+        json.dump(results, f)
+    if announced_out:
+        print(f"\nraw results: {announced_out}")
+    if html_path:
+        from .leaderboard import write_html
+        write_html(results, html_path)
+        print(f"leaderboard: {html_path}")
+
+
 def cmd_arena(args):
     bots_arg = (args.bots or "").strip()
     cxx_bots = [] if bots_arg.lower() in ("", "none") else [
@@ -152,59 +210,19 @@ def cmd_arena(args):
             tmpdir = tempfile.TemporaryDirectory()
             out_path = str(Path(tmpdir.name) / "results.json")
 
-        results = []
-        if cxx_bots:
-            binary = find_tournament_bin()
-            if binary is None:
-                print("error: kairos_tournament binary not found.",
-                      file=sys.stderr)
-                print("If you installed from source, build first: ./scripts/build.sh",
-                      file=sys.stderr)
-                print("Or point $KAIROS_TOURNAMENT at the binary.",
-                      file=sys.stderr)
-                return 2
-            print(f"running arena (C++): bots={','.join(cxx_bots)} "
-                  f"seeds={args.seeds} duration={args.duration}s "
-                  f"regime={args.regime}", flush=True)
-            cmd = [binary, "--bots", ",".join(cxx_bots),
-                   "--seeds", str(args.seeds), "--duration", str(args.duration),
-                   "--regime", args.regime, "--out", out_path]
-            if args.quiet:
-                proc = subprocess.run(cmd, capture_output=True, text=True)
-                if proc.returncode != 0:
-                    raise RuntimeError(
-                        f"kairos_tournament failed (exit {proc.returncode}):\n"
-                        f"{proc.stderr}")
-            else:
-                proc = subprocess.run(cmd)
-                if proc.returncode != 0:
-                    raise RuntimeError(
-                        f"kairos_tournament failed (exit {proc.returncode})")
-            with open(out_path) as f:
-                results.extend(json.load(f))
+        results = _run_tournament(cxx_bots, py_specs, args.seeds,
+                                  args.duration, args.regime, args.budget_s,
+                                  args.quiet, out_path)
+        _present_results(results, args.seeds, args.duration, args.regime,
+                         out_path, html_path=args.html,
+                         announced_out=args.out)
 
-        if py_specs:
-            from .arena import run_tournament as run_py_tournament
-            print(f"running arena (Python): bots="
-                  f"{','.join(n for n, _ in py_specs)} seeds={args.seeds} "
-                  f"duration={args.duration}s regime={args.regime} "
-                  f"budget={args.budget_s}s/callback", flush=True)
-            results.extend(run_py_tournament(
-                py_specs, seeds=args.seeds, duration_s=args.duration,
-                regime=args.regime, callback_budget_s=args.budget_s,
-                quiet=args.quiet))
-
-        print()
-        print_table(results, args.seeds, args.duration, args.regime)
-
-        with open(out_path, "w") as f:
-            json.dump(results, f)
-        if args.out:
-            print(f"\nraw results: {args.out}")
-        if args.html:
-            from .leaderboard import write_html
-            write_html(results, args.html)
-            print(f"leaderboard: {args.html}")
+        if args.record is not None:
+            from .seasons import record, default_ledger_path
+            ledger = args.ledger or default_ledger_path()
+            season_id = args.record if args.record else "open"
+            n = record(ledger, season_id, results)
+            print(f"recorded {n} results to {ledger} (season: {season_id})")
         return 0
     except RuntimeError as e:
         print(f"error: {e}", file=sys.stderr)
@@ -212,6 +230,86 @@ def cmd_arena(args):
     finally:
         if tmpdir is not None:
             tmpdir.cleanup()
+
+
+def cmd_leaderboard(args):
+    from .seasons import (default_ledger_path, load_season, read_records,
+                          season_scores)
+    ledger = args.ledger or default_ledger_path()
+    records = read_records(ledger, args.season)
+    if not records:
+        scope = f" for '{args.season}'" if args.season else ""
+        print(f"no records{scope} in {ledger}")
+        print("run one: kairos season run season-01")
+        return 1
+    scoring = {"lambda_inv": 1.0, "lambda_risk": 1.0, "spread_cost": 0.01}
+    title = "Kairos Bot Leaderboard"
+    if args.season:
+        try:
+            scoring = load_season(args.season)["scoring"]
+            title = f"Kairos Leaderboard — {load_season(args.season)['name']}"
+        except ValueError:
+            title = f"Kairos Leaderboard — {args.season}"
+    scores = season_scores(records, scoring)
+    print(_c("1", title))
+    print(f"{'rank':>4}  {'bot':<14} {'score':>9} {'mean PnL($)':>11} "
+          f"{'seeds':>6} {'dq':>3}")
+    for i, s in enumerate(scores, 1):
+        mark = _c("33", " *") if s["disqualified"] else ""
+        print(f"{i:>4}  {s['bot']:<14} {s['total']:>9.2f} "
+              f"{s['mean_pnl']:>11.2f} {s['n_seeds']:>6} "
+              f"{s['disqualified']:>3}{mark}")
+    if any(s["disqualified"] for s in scores):
+        print(_c("33", " * disqualified in one or more seeds"))
+    if args.html:
+        from .leaderboard import render_html
+        Path(args.html).write_text(render_html(scores, title))
+        print(f"leaderboard: {args.html}")
+    return 0
+
+
+def cmd_season_list(args):
+    from .seasons import list_seasons
+    seasons = list_seasons()
+    if not seasons:
+        print("no published seasons yet")
+        return 1
+    for cfg in seasons:
+        print(f"{cfg['id']}: {cfg['name']} "
+              f"(bots={','.join(cfg['bots'])}, seeds={cfg['seeds']}, "
+              f"{cfg['duration_s']}s, {cfg['regime']})")
+    return 0
+
+
+def cmd_season_run(args):
+    from .seasons import default_ledger_path, load_season, record
+    try:
+        cfg = load_season(args.season_id)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    print(_c("1", f"Season {cfg['id']}: {cfg['name']}"))
+    if cfg.get("rules"):
+        print(_c("2", f"rules: {cfg['rules']}"))
+    tmpdir = tempfile.TemporaryDirectory()
+    try:
+        out_path = str(Path(tmpdir.name) / "season_results.json")
+        ns = argparse.Namespace(
+            bots=",".join(cfg["bots"]), py_bot=[], seeds=cfg["seeds"],
+            duration=cfg["duration_s"], regime=cfg["regime"], budget_s=180,
+            quiet=False, out=out_path, html=args.html, record=None,
+            ledger=None)
+        rc = cmd_arena(ns)
+        if rc != 0:
+            return rc
+        with open(out_path) as f:
+            results = json.load(f)
+        ledger = args.ledger or default_ledger_path()
+        n = record(ledger, cfg["id"], results)
+        print(f"recorded {n} results to {ledger}")
+        return 0
+    finally:
+        tmpdir.cleanup()
 
 
 def cmd_realism_gap(args):
@@ -284,6 +382,11 @@ def build_parser():
     arena.add_argument("--out", default=None, help="write raw tournament JSON here")
     arena.add_argument("--html", default=None, help="write an HTML leaderboard here")
     arena.add_argument("--quiet", action="store_true", help="hide engine progress output")
+    arena.add_argument("--record", nargs="?", const="", metavar="SEASON",
+                       help="append results to the leaderboard ledger "
+                            "(default season: open)")
+    arena.add_argument("--ledger", default=None,
+                       help="ledger file (default: repo data/leaderboard/ledger.jsonl)")
     arena.set_defaults(func=cmd_arena)
 
     rg = sub.add_parser("realism-gap",
@@ -298,6 +401,28 @@ def build_parser():
     rg.add_argument("--chart", default=None,
                     help="write an SVG equity-curve chart here")
     rg.set_defaults(func=cmd_realism_gap)
+
+    lb = sub.add_parser("leaderboard",
+                        help="show the recorded bot leaderboard")
+    lb.add_argument("--season", default=None,
+                    help="season id (default: all recorded results)")
+    lb.add_argument("--ledger", default=None,
+                    help="ledger file (default: repo data/leaderboard/ledger.jsonl)")
+    lb.add_argument("--html", default=None,
+                    help="write a self-contained HTML leaderboard here")
+    lb.set_defaults(func=cmd_leaderboard)
+
+    sea = sub.add_parser("season", help="published bot competitions")
+    sea_sub = sea.add_subparsers(dest="season_cmd", required=True)
+    sr = sea_sub.add_parser("run", help="run a published season")
+    sr.add_argument("season_id", help="e.g. season-01")
+    sr.add_argument("--ledger", default=None,
+                    help="ledger file (default: repo data/leaderboard/ledger.jsonl)")
+    sr.add_argument("--html", default=None,
+                    help="write a self-contained HTML leaderboard here")
+    sr.set_defaults(func=cmd_season_run)
+    sl = sea_sub.add_parser("list", help="list published seasons")
+    sl.set_defaults(func=cmd_season_list)
     return ap
 
 

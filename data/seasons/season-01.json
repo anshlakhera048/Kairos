@@ -1,0 +1,22 @@
+{
+  "id": "season-01",
+  "name": "Season 1 — Genesis",
+  "regime": "calm",
+  "duration_s": 30,
+  "seeds": 20,
+  "bots": [
+    "as",
+    "fixed",
+    "momentum"
+  ],
+  "scoring": {
+    "lambda_inv": 1.0,
+    "lambda_risk": 1.0,
+    "spread_cost": 0.01
+  },
+  "budgets": {
+    "cxx_callback_ms": 5,
+    "py_callback_s": 180
+  },
+  "rules": "Built-in bots only (as, fixed, momentum). 20 seeds (1000-1019), 30s each, calm regime. 5ms per-callback budget; breach disqualifies the seed. Score = mean PnL - inventory penalty + Sharpe-like term. Inaugural run by the maintainer; future seasons open to community bots."
+}

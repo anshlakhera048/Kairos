@@ -130,6 +130,32 @@ cmake --build --preset release --target kairos_tournament
 python3 tools/arena/leaderboard.py --input /tmp/results.json --out /tmp/leaderboard.html
 ```
 
+### Leaderboard & seasons
+
+Published bot competitions. A season is a fixed, versioned config
+(`data/seasons/`); official results are committed to the repo ledger
+(`data/leaderboard/ledger.jsonl`), so anyone can re-run a season and
+verify a score.
+
+```bash
+kairos season list                          # published seasons
+kairos season run season-01                 # run it, record it
+kairos leaderboard --season season-01       # ranked table
+kairos leaderboard --season season-01 --html board.html
+```
+
+**Season 1 — Genesis** (inaugural, maintainer-run): 20 seeds × 30s, calm
+regime, built-in bots. `fixed` edged out `as` by 0.0001 — the A-S bot's
+single disqualified seed cost it the title.
+
+| Rank | Bot | Score | Mean PnL | Fills | Seeds | DQ |
+| ---- | --- | ----- | -------- | ----- | ----- | -- |
+| 1 | fixed | 0.7886 | $0.29 | 32 | 20 | 0 |
+| 2 | as | 0.7885 | $0.29 | 32 | 20 | 1 |
+| 3 | momentum | -0.0020 | $0.00 | 6 | 20 | 1 |
+
+Score = mean PnL − inventory penalty + Sharpe-like term.
+
 ### Reproduce the realism-gap experiment
 
 ```bash
@@ -246,6 +272,7 @@ Phases 1–4 are implemented and tested:
 | 5 | pip packaging (`kairos-engine`) + `kairos` CLI | Done — `pip install kairos-engine && kairos demo` |
 | 6 | Arena Python bindings + LLM agent framework | Done — `kairos arena --py-bot`, `DebateTrader` reference agent |
 | 7 | One-command realism-gap demo | Done — `kairos realism-gap` (table + SVG chart) |
+| 8 | Public leaderboard + season 1 | Done — `kairos season run`, `kairos leaderboard`, Season 1 recorded |
 
 Be aware of the following:
 
