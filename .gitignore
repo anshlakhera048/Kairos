@@ -27,3 +27,12 @@ benchmark_results/
 
 # OS noise
 .DS_Store
+
+# Python / packaging
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+.venv/
+pip-wheel-metadata/

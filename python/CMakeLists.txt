@@ -12,6 +12,11 @@ set_target_properties(kairos_py PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/kairos
 )
 
+# Wheel installs: ship the compiled module inside the kairos package.
+# (wheel.packages only picks up source files; the .so is git-ignored, so it
+# needs an explicit install rule.) Only runs under `cmake --install`.
+install(TARGETS kairos_py DESTINATION kairos)
+
 # Exercise the bindings in CI, not just build them: generate a deterministic
 # synthetic capture and run the full binding smoke test (quote parity,
 # simulator run, A-S fills) against it. The capture lands in the build

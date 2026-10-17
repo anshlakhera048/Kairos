@@ -1,0 +1,48 @@
+# kairos-engine — pip-installable distribution of the Kairos matching engine.
+#
+# `pip install kairos-engine` builds the C++ core (pybind11 module +
+# kairos_tournament binary) via scikit-build-core and installs the `kairos`
+# CLI. Unit tests and benchmarks are disabled for wheel builds: they need
+# googletest and add minutes to every install for zero user benefit.
+
+[build-system]
+requires = ["scikit-build-core>=0.9"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "kairos-engine"
+version = "0.1.0"
+description = "Deterministic low-latency matching engine and market-microstructure arena"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Ansh Lakhera" }]
+keywords = ["trading", "market-microstructure", "matching-engine", "backtest", "hft", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business :: Financial",
+]
+dependencies = ["numpy>=1.24"]
+
+[project.scripts]
+kairos = "kairos.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/anshlakhera048/Kairos"
+Repository = "https://github.com/anshlakhera048/Kairos"
+Issues = "https://github.com/anshlakhera048/Kairos/issues"
+
+[tool.scikit-build]
+cmake.source-dir = "."
+# Skip googletest/benchmark FetchContent: wheel users don't run the test suite.
+cmake.args = ["-DKAIROS_BUILD_TESTS=OFF", "-DKAIROS_BUILD_BENCHMARKS=OFF"]
+# Only the artifacts the wheel needs: the Python module and the arena driver.
+build.targets = ["kairos_py", "kairos_tournament"]
+# Pure-Python package dir. The compiled kairos_py.*.so is built in-source
+# into python/kairos/ by CMake, so it is picked up from here as well.
+wheel.packages = ["python/kairos"]

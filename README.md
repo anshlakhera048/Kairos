@@ -50,6 +50,19 @@ Validation, not features, is the differentiator.
 
 ## Quickstart
 
+**The 2-minute version** — no C++ toolchain setup, no CMake:
+
+```bash
+pip install kairos-engine
+kairos demo
+```
+
+That runs a 10-seed tournament on the deterministic matching engine and
+prints a ranked leaderboard. `kairos arena --help` for the full tournament
+(full bot list, regimes, JSON/HTML output).
+
+**From source** (contributor path):
+
 **Prerequisites:** CMake ≥ 3.24, a C++20 compiler (GCC or Clang), Python 3
 (for the bindings and tooling), and internet access on first configure
 (GoogleTest, Google Benchmark, and pybind11 come via FetchContent).
@@ -182,6 +195,7 @@ Phases 1–4 are implemented and tested:
 | 2 | Capture, replay, fill modelling | Done |
 | 3 | Strategy API, A-S market maker, Python bindings | Done |
 | 4 | Tournament arena + leaderboard | Done — 5 bots × 50 seeds reproducible |
+| 5 | pip packaging (`kairos-engine`) + `kairos` CLI | Done — `pip install kairos-engine && kairos demo` |
 
 Be aware of the following:
 
