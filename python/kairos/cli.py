@@ -13,6 +13,8 @@ and presents the leaderboard.
 """
 
 import argparse
+import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -70,29 +72,6 @@ def find_tournament_bin():
     return None
 
 
-def run_tournament(binary, bots, seeds, duration, regime, out_path, quiet=False):
-    """Run the tournament binary; return the parsed JSON results."""
-    cmd = [
-        binary,
-        "--bots", ",".join(bots),
-        "--seeds", str(seeds),
-        "--duration", str(duration),
-        "--regime", regime,
-        "--out", out_path,
-    ]
-    if quiet:
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        if proc.returncode != 0:
-            raise RuntimeError(
-                f"kairos_tournament failed (exit {proc.returncode}):\n{proc.stderr}")
-    else:
-        proc = subprocess.run(cmd)
-        if proc.returncode != 0:
-            raise RuntimeError(f"kairos_tournament failed (exit {proc.returncode})")
-    with open(out_path) as f:
-        return json.load(f)
-
-
 def print_table(scores, seeds, duration, regime):
     """Print the ranked leaderboard. Scores come from kairos.leaderboard."""
     from .leaderboard import compute_scores  # local import: keep cli importable
@@ -118,19 +97,51 @@ def print_table(scores, seeds, duration, regime):
     print(_c("2", "score = mean PnL - inventory penalty + risk-adjusted term"))
 
 
-def cmd_arena(args):
-    binary = find_tournament_bin()
-    if binary is None:
-        print("error: kairos_tournament binary not found.", file=sys.stderr)
-        print("If you installed from source, build first: ./scripts/build.sh", file=sys.stderr)
-        print("Or point $KAIROS_TOURNAMENT at the binary.", file=sys.stderr)
-        return 2
+def load_py_bot(spec):
+    """Load a Python bot factory from a 'path/to/bot.py:Factory' spec."""
+    path_s, sep, attr = spec.partition(":")
+    if not sep or not attr:
+        raise ValueError(
+            f"bad --py-bot spec {spec!r}: expected path/to/bot.py:FactoryName")
+    p = Path(path_s)
+    if not p.is_file():
+        raise ValueError(f"bot file not found: {path_s}")
+    mod_name = "kairos_user_bot_" + hashlib.md5(
+        str(p.resolve()).encode()).hexdigest()[:8]
+    mod_spec = importlib.util.spec_from_file_location(mod_name, p)
+    if mod_spec is None or mod_spec.loader is None:
+        raise ValueError(f"cannot load bot file: {path_s}")
+    mod = importlib.util.module_from_spec(mod_spec)
+    sys.modules[mod_name] = mod
+    mod_spec.loader.exec_module(mod)
+    factory = getattr(mod, attr, None)
+    if not callable(factory):
+        raise ValueError(
+            f"{path_s} has no callable {attr!r} (expected a bot class or factory)")
+    return attr, factory
 
-    bots = [b.strip() for b in args.bots.split(",") if b.strip()]
-    unknown = [b for b in bots if b not in BOTS]
+
+def cmd_arena(args):
+    bots_arg = (args.bots or "").strip()
+    cxx_bots = [] if bots_arg.lower() in ("", "none") else [
+        b.strip() for b in bots_arg.split(",") if b.strip()]
+    unknown = [b for b in cxx_bots if b not in BOTS]
     if unknown:
         print(f"error: unknown bot(s): {', '.join(unknown)} "
               f"(choose from {', '.join(BOTS)})", file=sys.stderr)
+        return 2
+
+    py_specs = []
+    for spec in args.py_bot or []:
+        try:
+            py_specs.append(load_py_bot(spec))
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+
+    if not cxx_bots and not py_specs:
+        print("error: nothing to run (--bots none and no --py-bot given)",
+              file=sys.stderr)
         return 2
 
     tmpdir = None
@@ -141,13 +152,53 @@ def cmd_arena(args):
             tmpdir = tempfile.TemporaryDirectory()
             out_path = str(Path(tmpdir.name) / "results.json")
 
-        print(f"running arena: bots={','.join(bots)} seeds={args.seeds} "
-              f"duration={args.duration}s regime={args.regime}", flush=True)
-        results = run_tournament(binary, bots, args.seeds, args.duration,
-                                 args.regime, out_path, quiet=args.quiet)
+        results = []
+        if cxx_bots:
+            binary = find_tournament_bin()
+            if binary is None:
+                print("error: kairos_tournament binary not found.",
+                      file=sys.stderr)
+                print("If you installed from source, build first: ./scripts/build.sh",
+                      file=sys.stderr)
+                print("Or point $KAIROS_TOURNAMENT at the binary.",
+                      file=sys.stderr)
+                return 2
+            print(f"running arena (C++): bots={','.join(cxx_bots)} "
+                  f"seeds={args.seeds} duration={args.duration}s "
+                  f"regime={args.regime}", flush=True)
+            cmd = [binary, "--bots", ",".join(cxx_bots),
+                   "--seeds", str(args.seeds), "--duration", str(args.duration),
+                   "--regime", args.regime, "--out", out_path]
+            if args.quiet:
+                proc = subprocess.run(cmd, capture_output=True, text=True)
+                if proc.returncode != 0:
+                    raise RuntimeError(
+                        f"kairos_tournament failed (exit {proc.returncode}):\n"
+                        f"{proc.stderr}")
+            else:
+                proc = subprocess.run(cmd)
+                if proc.returncode != 0:
+                    raise RuntimeError(
+                        f"kairos_tournament failed (exit {proc.returncode})")
+            with open(out_path) as f:
+                results.extend(json.load(f))
+
+        if py_specs:
+            from .arena import run_tournament as run_py_tournament
+            print(f"running arena (Python): bots="
+                  f"{','.join(n for n, _ in py_specs)} seeds={args.seeds} "
+                  f"duration={args.duration}s regime={args.regime} "
+                  f"budget={args.budget_s}s/callback", flush=True)
+            results.extend(run_py_tournament(
+                py_specs, seeds=args.seeds, duration_s=args.duration,
+                regime=args.regime, callback_budget_s=args.budget_s,
+                quiet=args.quiet))
+
         print()
         print_table(results, args.seeds, args.duration, args.regime)
 
+        with open(out_path, "w") as f:
+            json.dump(results, f)
         if args.out:
             print(f"\nraw results: {args.out}")
         if args.html:
@@ -177,7 +228,14 @@ def build_parser():
 
     arena = sub.add_parser("arena", help="run the tournament arena")
     arena.add_argument("--bots", default=",".join(BOTS),
-                       help=f"comma-separated bot list (default: all). choices: {','.join(BOTS)}")
+                       help=f"comma-separated C++ bot list (default: all; "
+                            f"'none' for no C++ bots). choices: {','.join(BOTS)}")
+    arena.add_argument("--py-bot", action="append", default=[],
+                       help="Python bot as path/to/bot.py:FactoryName "
+                            "(repeatable; runs on the same seeds)")
+    arena.add_argument("--budget-s", type=float, default=180.0,
+                       help="per-callback wall-clock thinking budget in "
+                            "seconds for Python bots (default: 180)")
     arena.add_argument("--seeds", type=int, default=20)
     arena.add_argument("--duration", type=int, default=60, help="simulated seconds per seed")
     arena.add_argument("--regime", default="calm", choices=REGIMES)
@@ -190,7 +248,8 @@ def build_parser():
 
 def _demo_args(a):
     return argparse.Namespace(
-        bots="as,fixed,momentum", seeds=10, duration=30, regime="calm",
+        bots="as,fixed,momentum", py_bot=[], budget_s=180.0,
+        seeds=10, duration=30, regime="calm",
         out=None, html=a.html, quiet=a.quiet,
     )
 

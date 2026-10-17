@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.24)
 
-pybind11_add_module(kairos_py bindings.cpp)
+# The Python module is a shared object: the static core archive it links
+# must be position-independent. Scoped to the Python build so the engine's
+# own codegen is untouched.
+set_target_properties(kairos_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+pybind11_add_module(kairos_py bindings.cpp arena_bindings.cpp)
 target_link_libraries(kairos_py PRIVATE kairos::kairos kairos_core)
 # Our strict warnings apply to our code; pybind11 headers are system-like.
 target_compile_options(kairos_py PRIVATE

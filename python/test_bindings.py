@@ -97,6 +97,65 @@ def test_as_strategy_runs(capture_path):
     print(f"A-S strategy: OK ({n_fills} fills)")
 
 
+def test_arena_run():
+    """A Python bot runs on the C++ arena: schema, determinism, no DQ."""
+    from kairos import kairos_py
+
+    class Noop:
+        def on_book_update(self, ctx):
+            pass
+
+        def on_trade(self, ctx, trade):
+            assert "price_ticks" in trade
+
+        def on_own_fill(self, ctx, fill):
+            pass
+
+        def on_ack(self, ctx, ack):
+            pass
+
+        def on_reject(self, ctx, order_id):
+            pass
+
+        def on_cancel(self, ctx, order_id):
+            pass
+
+        def on_timer(self, ctx):
+            # Exercise the arena Context API.
+            assert ctx.now_ns >= 0
+            bb, ba = ctx.best_bid(), ctx.best_ask()
+            if bb is not None:
+                assert bb[0] > 0 and bb[1] >= 0
+
+    class Quoter(Noop):
+        """Posts passive quotes around the mid on every timer."""
+
+        def on_timer(self, ctx):
+            super().on_timer(ctx)
+            bb, ba = ctx.best_bid(), ctx.best_ask()
+            if bb is None or ba is None:
+                return
+            mid = (bb[0] + ba[0]) // 2
+            ctx.send_limit("bid", mid - 2, 100_000, post_only=True)
+            ctx.send_limit("ask", mid + 2, 100_000, post_only=True)
+
+    kw = dict(regime="calm", seed=1000, duration_s=3)
+    r1 = kairos_py.arena_run(Noop, "noop", **kw)
+    r2 = kairos_py.arena_run(Noop, "noop", **kw)
+    for k in ("bot", "seed", "fills", "acks", "rejects", "position",
+              "pnl_lots", "disqualified", "dq_reason"):
+        assert k in r1, f"arena result missing key {k}"
+    assert (r1["bot"], r1["seed"]) == ("noop", 1000)
+    assert r1["disqualified"] is False, r1["dq_reason"]
+    assert (r1["fills"], r1["pnl_lots"]) == (r2["fills"], r2["pnl_lots"]), \
+        "arena not deterministic across identical seeds"
+
+    q = kairos_py.arena_run(Quoter, "quoter", **kw)
+    assert q["disqualified"] is False, q["dq_reason"]
+    assert q["acks"] > 0, "quoting bot got zero acks"
+    print(f"arena_run: OK (noop deterministic, quoter acks={q['acks']})")
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(f"usage: {sys.argv[0]} <capture.kai>")
@@ -104,4 +163,7 @@ if __name__ == "__main__":
     test_quote_parity()
     test_simulator_runs(sys.argv[1])
     test_as_strategy_runs(sys.argv[1])
+    test_arena_run()
     print("all Python binding tests passed")
+
+

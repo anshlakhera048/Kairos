@@ -61,6 +61,40 @@ That runs a 10-seed tournament on the deterministic matching engine and
 prints a ranked leaderboard. `kairos arena --help` for the full tournament
 (full bot list, regimes, JSON/HTML output).
 
+**Run a Python bot** (including LLM agents) on the same engine:
+
+```bash
+# mybot.py
+from kairos.agents import ArenaBot
+
+class MyBot(ArenaBot):
+    def on_timer(self, ctx):
+        bid, ask = ctx.best_bid(), ctx.best_ask()
+        if bid and ask:
+            mid = (bid[0] + ask[0]) // 2
+            ctx.send_limit("bid", mid - 2, 100_000, post_only=True)
+            ctx.send_limit("ask", mid + 2, 100_000, post_only=True)
+
+kairos arena --bots as --py-bot mybot.py:MyBot --seeds 5 --duration 60
+```
+
+The reference LLM agent (`kairos.agents.DebateTrader`: analyst →
+bull/bear debate → trader → rule-based risk gate) runs offline with a
+mock LLM, or live with any OpenAI-compatible endpoint:
+
+```bash
+export KAIROS_LLM_API_BASE="https://openrouter.ai/api/v1"
+export KAIROS_LLM_API_KEY="..."
+export KAIROS_LLM_MODEL="anthropic/claude-haiku-4-5"
+kairos arena --bots none --py-bot debate_demo.py:make_debate --seeds 3 \
+  --duration 120 --budget-s 300
+```
+
+Python bots compete on identical seeds and markets as the C++ bots; the
+market runs in logical time, so LLM thinking time buys no advantage —
+`--budget-s` only guards against hangs. See `docs/adr/0005` for the
+design.
+
 **From source** (contributor path):
 
 **Prerequisites:** CMake ≥ 3.24, a C++20 compiler (GCC or Clang), Python 3
@@ -196,6 +230,7 @@ Phases 1–4 are implemented and tested:
 | 3 | Strategy API, A-S market maker, Python bindings | Done |
 | 4 | Tournament arena + leaderboard | Done — 5 bots × 50 seeds reproducible |
 | 5 | pip packaging (`kairos-engine`) + `kairos` CLI | Done — `pip install kairos-engine && kairos demo` |
+| 6 | Arena Python bindings + LLM agent framework | Done — `kairos arena --py-bot`, `DebateTrader` reference agent |
 
 Be aware of the following:
 
