@@ -13,7 +13,7 @@ feed/order latency, and adverse selection are modeled, not assumed.
 Install:
 
 ```bash
-pip install kairos-engine
+pip install kairos-hft
 kairos demo   # ~30s: 10-seed tournament on the real engine. Start here.
 ```
 

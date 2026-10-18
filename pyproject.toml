@@ -1,6 +1,6 @@
-# kairos-engine — pip-installable distribution of the Kairos matching engine.
+# kairos-hft — pip-installable distribution of the Kairos matching engine.
 #
-# `pip install kairos-engine` builds the C++ core (pybind11 module +
+# `pip install kairos-hft` builds the C++ core (pybind11 module +
 # kairos_tournament binary) via scikit-build-core and installs the `kairos`
 # CLI. Unit tests and benchmarks are disabled for wheel builds: they need
 # googletest and add minutes to every install for zero user benefit.
@@ -10,7 +10,7 @@ requires = ["scikit-build-core>=0.9"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "kairos-engine"
+name = "kairos-hft"
 version = "1.0.0"
 description = "Deterministic low-latency matching engine and market-microstructure arena"
 readme = "README.md"

@@ -31,7 +31,7 @@ def _ext():
     except ImportError as e:
         raise ImportError(
             "the Kairos C++ extension is not built; run ./scripts/build.sh "
-            "or pip install kairos-engine first") from e
+            "or pip install kairos-hft first") from e
     return kairos_py
 
 

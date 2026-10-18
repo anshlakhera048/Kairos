@@ -13,7 +13,7 @@ in the core — with one-command tournaments, honest fill modeling, and a
 public bot leaderboard.
 
 ```bash
-pip install kairos-engine
+pip install kairos-hft
 kairos demo
 ```
 
@@ -100,7 +100,7 @@ compiler — GCC or Clang.)
 **Option A — pip (fastest):**
 
 ```bash
-pip install kairos-engine
+pip install kairos-hft
 kairos demo
 ```
 
@@ -108,7 +108,7 @@ kairos demo
 > [GitHub release](https://github.com/anshlakhera048/Kairos/releases)
 > (CPython 3.12, Linux x86_64):
 > ```bash
-> pip install kairos_engine-1.0.0-cp312-cp312-linux_x86_64.whl
+> pip install kairos_hft-1.0.0-cp312-cp312-linux_x86_64.whl
 > ```
 
 **Option B — from source** (contributor path; all work happens on the `dev`
@@ -347,7 +347,7 @@ examples/         debate_demo.py and other runnable examples
 | 2 | Capture, replay, fill modelling | Done |
 | 3 | Strategy API, A-S market maker, Python bindings | Done |
 | 4 | Tournament arena + leaderboard | Done — 5 bots × 50 seeds reproducible |
-| 5 | pip packaging (`kairos-engine`) + `kairos` CLI | Done — `kairos demo` in two minutes |
+| 5 | pip packaging (`kairos-hft`) + `kairos` CLI | Done — `kairos demo` in two minutes |
 | 6 | Arena Python bindings + LLM agent framework | Done — `kairos arena --py-bot`, `DebateTrader` |
 | 7 | One-command realism-gap demo | Done — `kairos realism-gap` (table + SVG chart) |
 | 8 | Public leaderboard + season 1 | Done — `kairos season run`, Season 1 recorded |
@@ -356,7 +356,7 @@ examples/         debate_demo.py and other runnable examples
 
 **What's next:** validation of the fill model against real fills
 ([plan](docs/design/validation-plan.md)); PyPI publication of
-`kairos-engine`; Season 2 with community-submitted bots.
+`kairos-hft`; Season 2 with community-submitted bots.
 
 ## Limitations
 
